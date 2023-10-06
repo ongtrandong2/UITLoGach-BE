@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
 
 const userModel = mongoose.model("user", userSchema);
 
-app.listen(3000, () => {
+app.listen(process.env.PORT || 3000, () => {
   console.log("server started");
 });
 
