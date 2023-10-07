@@ -3,11 +3,18 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 var bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
-
+var cors = require('cors')
 const app = express();
 
+app.use(cors())
 app.use(express.json());
-
+app.get('/products/:id', function (req, res, next) {
+  res.json({msg: 'This is CORS-enabled for all origins!'})
+})
+ 
+app.listen(80, function () {
+  console.log('CORS-enabled web server listening on port 80')
+})
 async function main() {
   try {
     await mongoose.connect(
