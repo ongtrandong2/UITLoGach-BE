@@ -37,20 +37,20 @@ app.listen(process.env.PORT || 3000, () => {
   console.log("server started");
 });
 
-app.post("/sign_up", async (req, res) => {
+app.post("/register", async (req, res) => {
   let { email, password, ...rest } = req.body;
   try {
     password = bcrypt.hashSync(password, 10);
     const user = new userModel({ email, password });
     await user.save();
-    res.send("success sign up");
+    res.send("success register");
   } catch (error) {
     console.error(error);
     res.sendStatus(500);
   }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/sign_in", async (req, res) => {
   const { email, password, ...rest } = req.body;
   try {
     const user = await userModel.findOne({ email });
