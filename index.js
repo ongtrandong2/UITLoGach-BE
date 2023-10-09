@@ -27,8 +27,11 @@ async function main() {
 }
 
 const userSchema = new mongoose.Schema({
+  name: String,
   email: String,
   password: String,
+  date: String,
+  gender: String,
 });
 
 const userModel = mongoose.model("user", userSchema);
@@ -38,10 +41,10 @@ app.listen(process.env.PORT || 3000, () => {
 });
 
 app.post("/register", async (req, res) => {
-  let { email, password, ...rest } = req.body;
+  let { name, email, password,date,gender, ...rest } = req.body;
   try {
     password = bcrypt.hashSync(password, 10);
-    const user = new userModel({ email, password });
+    const user = new userModel({ name, email, password,date,gender});
     await user.save();
     res.send("success register");
   } catch (error) {
