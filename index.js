@@ -3,18 +3,18 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 var bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
-var cors = require('cors')
+var cors = require("cors");
 const app = express();
 
-app.use(cors())
+app.use(cors());
 app.use(express.json());
-app.get('/products/:id', function (req, res, next) {
-  res.json({msg: 'This is CORS-enabled for all origins!'})
-})
- 
+app.get("/products/:id", function (req, res, next) {
+  res.json({ msg: "This is CORS-enabled for all origins!" });
+});
+
 app.listen(80, function () {
-  console.log('CORS-enabled web server listening on port 80')
-})
+  console.log("CORS-enabled web server listening on port 80");
+});
 async function main() {
   try {
     await mongoose.connect(
@@ -41,10 +41,14 @@ app.listen(process.env.PORT || 3000, () => {
 });
 
 app.post("/register", async (req, res) => {
-  let { name, email, password,date,gender, ...rest } = req.body;
+  const existingUser = await userModel.findOne({ email });
+  if (existingUser) {
+    return res.status(400).send("Email already exists"); 
+  }
+  let { name, email, password, date, gender, ...rest } = req.body;
   try {
     password = bcrypt.hashSync(password, 10);
-    const user = new userModel({ name, email, password,date,gender});
+    const user = new userModel({ name, email, password, date, gender });
     await user.save();
     res.send("success register");
   } catch (error) {
@@ -54,9 +58,9 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/sign_in", async (req, res) => {
-  const { email, password, ...rest } = req.body;
+  const { email, password } = req.body;
   try {
-    const user = await userModel.findOne({ email });
+    const user = await userModel.findOne({ email }).lean();
     if (!user) {
       res.sendStatus(404);
       return;
@@ -65,26 +69,24 @@ app.post("/sign_in", async (req, res) => {
       res.sendStatus(401);
       return;
     } else {
-      const token = jwt.sign(
-        {
-          email,
-        },
-        "UITLoGachNho"
-      );
+      const { password, ...rest } = user;
+      const token = jwt.sign(rest, "UITLoGachNho");
       res.send(token);
       return;
     }
   } catch (error) {}
 });
 
-async function authenticationMiddleware(req, res, next) {
+async function JWTauthenticationMiddleware(req, res, next) {
   const token = req.headers.authorization.split(" ")[1];
   try {
     const decoded = jwt.verify(token, "UITLoGachNho");
-    const { email } = decoded;
+    const { name, email } = decoded;
     const user = await userModel.findOne({ email });
+    console.log(decoded);
     if (user) {
-      req.email = email;
+      req.user = user;
+
       next();
     }
   } catch (error) {
@@ -92,9 +94,38 @@ async function authenticationMiddleware(req, res, next) {
   }
 }
 
-app.get("/hello", authenticationMiddleware, (req, res) => {
-  const email = req.email;
+app.get("/me", JWTauthenticationMiddleware, (req, res) => {
+  const { email } = req.user;
   res.send(`Hello ${email}`);
+});
+
+app.patch("/me/password", JWTauthenticationMiddleware, async (req, res) => {
+  const { email, password, newPassword } = req.body;
+  const user = await userModel.findOne({ email }).lean();
+  if (!user) {
+    return res.status(404).send("User not found");
+  }
+  const isValid = bcrypt.compareSync(password, user.password);
+  if (!isValid) {
+    return res.status(401).send("Invalid password");
+  }
+  // Start transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    await userModel.updateOne({ email }, { password: hashedPassword });
+    await session.commitTransaction();
+    const { password, ...rest } = user;
+    const token = jwt.sign(rest, "UITLoGachNho");
+    res.send({ token });
+  } catch (error) {
+    // Abort and rollback transaction on error
+    await session.abortTransaction();
+    res.status(500).send("Error updating password");
+  } finally {
+    session.endSession();
+  }
 });
 
 main();
