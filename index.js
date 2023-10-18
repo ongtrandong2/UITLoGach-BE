@@ -2,7 +2,6 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const { userSchema } = require("./models/user");
 var cors = require("cors");
 const app = express();
 
@@ -26,7 +25,13 @@ async function main() {
   }
 }
 
-
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: String,
+  password: String,
+  date: String,
+  gender: String,
+});
 
 const userModel = mongoose.model("user", userSchema);
 
@@ -89,8 +94,9 @@ async function JWTauthenticationMiddleware(req, res, next) {
 }
 
 app.get("/me", JWTauthenticationMiddleware, (req, res) => {
-  const { email } = req.user;
-  res.send(req.user);
+  const { _id,name,email,date,gender } = req.user;
+  const user = { _id,name,email,date,gender }
+  res.send(user);
 });
 
 app.patch("/me/password", JWTauthenticationMiddleware, async (req, res) => {
