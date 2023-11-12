@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema({
   password: String,
   date: String,
   gender: String,
+  phone: String,
 });
 
 const userModel = mongoose.model("user", userSchema);
@@ -127,6 +128,32 @@ app.patch("/me/password", JWTauthenticationMiddleware, async (req, res) => {
   } finally {
     session.endSession();
   }
+});
+app.patch("/me/info", JWTauthenticationMiddleware, async (req, res) => {
+  // Lấy dữ liệu cần update từ body
+  const { name,email,date,gender,phone } = req.body;
+  const user = await userModel.findOne({ email }).lean();
+  try {  
+    // Cập nhật tên mới
+    user.name = name;
+    user.email = email;
+    user.date = date;
+    user.gender = gender;
+    user.phone = phone;
+
+    await userModel.updateMany({ email }, user);
+    res.json(user);  
+
+} catch(err) {
+
+// User không tồn tại
+if(!user) {
+return res.status(404).json({message: 'User not found'});
+}
+
+// Lỗi kết nối db
+res.status(500).json({message: err.message});
+} 
 });
 
 main();
