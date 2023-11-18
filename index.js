@@ -96,8 +96,8 @@ async function JWTauthenticationMiddleware(req, res, next) {
 }
 
 app.get("/me", JWTauthenticationMiddleware, (req, res) => {
-  const { _id,name,email,date,gender } = req.user;
-  const user = { _id,name,email,date,gender }
+  const { _id,name,email,date,gender,phone } = req.user;
+  const user = { _id,name,email,date,gender,phone }
   res.send(user);
 });
 
