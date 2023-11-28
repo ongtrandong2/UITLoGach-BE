@@ -36,7 +36,7 @@ app.listen(80, function () {
 async function main() {
   try {
     await mongoose.connect(
-      process.env.MONGODB_URL,
+      process.env.MONGODB_URL
     );
     console.log("connected to db");
   } catch (error) {
