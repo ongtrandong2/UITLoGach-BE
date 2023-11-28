@@ -5,6 +5,20 @@ const bcrypt = require("bcrypt");
 var cors = require("cors");
 const e = require("express");
 const app = express();
+const nodemailer = require("nodemailer");
+const dotenv = require("dotenv").config();
+
+const mailTransport = () =>
+  nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    // service: "gmail",
+    auth: {
+      user: process.env.MAILTRAN_USERNAME,
+      pass: process.env.MAILTRAN_PASSWORD,
+    },
+  });
 
 app.use(cors());
 app.use(express.json());
@@ -13,14 +27,16 @@ app.set("view engine", "ejs");
 app.get("/products/:id", function (req, res, next) {
   res.json({ msg: "This is CORS-enabled for all origins!" });
 });
-const JWT_SECRET = "GangGangGangPowPowPow";
+const JWT_SECRET = process.env.JWT_SECRET;
 app.listen(80, function () {
   console.log("CORS-enabled web server listening on port 80");
 });
+
+
 async function main() {
   try {
     await mongoose.connect(
-      "mongodb+srv://ongtrandong2:dongdong2@uitheater.h9f5vua.mongodb.net/?retryWrites=true&w=majority"
+      process.env.MONGODB_URL,
     );
     console.log("connected to db");
   } catch (error) {
@@ -74,7 +90,7 @@ app.post("/sign_in", async (req, res) => {
       return;
     } else {
       const { password, ...rest } = user;
-      const token = jwt.sign(rest, "UITLoGachNho");
+      const token = jwt.sign(rest, JWT_SECRET);
       res.send(token);
       return;
     }
@@ -177,7 +193,14 @@ app.post("/forgot_password", async (req, res) => {
     id: user._id,
   };
   const token = jwt.sign(payload, secret, { expiresIn: "15m" });
-  const link = `http://localhost:3000/reset_password/${user._id}/${token}`;
+  const link = `http://localhost:3000/resetpassword/${user._id}/${token}`;
+  mailTransport().sendMail({
+    from: process.env.MAILTRAN_USERNAME,
+    to: user.email,
+    subject: "Reset password",
+    html: `<h2>Please click on given link to reset your password</h2>
+        <a href="${link}">${link}</a>`,
+  });
   console.log(link);
   res.send("success");
 });
