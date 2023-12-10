@@ -86,7 +86,7 @@ app.get("/avatars", async (req, res) => {
 app.get("/one_avatar", async (req, res) => {
   try {
     const { index } = req.body;
-    const avt = (await avatarModel.find()).find((avt) => avt.index === index);
+    const avt = (await avatarModel.find()).find((avt) => avt.index == index);
     if (!avt) {
       return res.status(404).send("avt not found");
     }
