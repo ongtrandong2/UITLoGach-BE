@@ -44,6 +44,20 @@ async function main() {
   }
 }
 
+const avatarSchema = new mongoose.Schema({
+  _id: String,
+  index: String,
+  image: String,
+});
+const movieSchema = new mongoose.Schema({
+  _id: String,
+  movieId: Number,
+  name: String,
+  image: String,
+  description: String,
+  showtime: String,
+});
+
 const userSchema = new mongoose.Schema({
   name: String,
   email: String,
@@ -53,11 +67,63 @@ const userSchema = new mongoose.Schema({
   phone: String,
 });
 
+const avatarModel = mongoose.model("avatar", avatarSchema);
+const movieModel = mongoose.model("movie", movieSchema);
 const userModel = mongoose.model("user", userSchema);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("server started");
 });
+
+//Avatar
+app.get("/avatars", async (req, res) => {
+  const avatars = await avatarModel.find();
+  if (!avatars) {
+    return res.status(404).send("Movie not found");
+  }
+  res.send(avatars);
+});
+app.get("/one_avatar", async (req, res) => {
+  try {
+    const { index } = req.body;
+    const avt = (await avatarModel.find()).find((avt) => avt.index === index);
+    if (!avt) {
+      return res.status(404).send("avt not found");
+    }
+
+    res.send(avt);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+//Movie
+
+app.get("/movies", async (req, res) => {
+  const movies = await movieModel.find(); 
+  res.send(movies);
+});
+
+app.get("/one_movie", async (req, res) => {
+  try {
+    const { movieId } = req.body;
+    const movie = await movieModel.findOne({ movieId }).lean();
+
+    if (!movie) {
+      return res.status(404).send("Movie not found");
+    }
+
+    res.send(movie);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
+
+//User
 
 app.post("/register", async (req, res) => {
   const existingUser = await userModel.findOne({ email });
