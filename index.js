@@ -166,7 +166,7 @@ app.post("/sign_in", async (req, res) => {
 async function JWTauthenticationMiddleware(req, res, next) {
   const token = req.headers.authorization.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, "UITLoGachNho");
+    const decoded = jwt.verify(token, "GangGangGangPowPowPow");
     const { name, email } = decoded;
     const user = await userModel.findOne({ email });
     console.log(decoded);
@@ -204,7 +204,7 @@ app.patch("/me/password", JWTauthenticationMiddleware, async (req, res) => {
     await userModel.updateOne({ email }, { password: hashedPassword });
     await session.commitTransaction();
     const { password, ...rest } = user;
-    const token = jwt.sign(rest, "UITLoGachNho");
+    const token = jwt.sign(rest, "GangGangGangPowPowPow");
     res.send({ token });
   } catch (error) {
     // Abort and rollback transaction on error
