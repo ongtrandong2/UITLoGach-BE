@@ -44,6 +44,45 @@ async function main() {
   }
 }
 
+const hallSchema = new mongoose.Schema({
+  _id: String,
+  id: Number,
+  name: String,
+});
+
+const seatSchema = new mongoose.Schema({
+  _id: String,
+  id: Number,
+  hallId: Number,
+  type: String,
+  status: String,
+});
+
+const showtimeSchema = new mongoose.Schema({
+  _id: String,
+  id: Number,
+  movieId: Number,
+  theaterId: Number,
+  date: String,
+  time: String,
+});
+
+const ticketSchema = new mongoose.Schema({
+  _id: String,
+  id: Number,
+  showtimeId: Number,
+  seatId: Number,
+  userId: Number,
+});
+
+const theaterSchema = new mongoose.Schema({
+  _id: String,
+  id: Number,
+  name: String,
+  address: String,
+});
+
+
 const avatarSchema = new mongoose.Schema({
   _id: String,
   index: String,
@@ -59,17 +98,25 @@ const movieSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
+  _id: String,
+  userId: Number,
   name: String,
   email: String,
   password: String,
   date: String,
   gender: String,
   phone: String,
+  spent: Number,
 });
 
 const avatarModel = mongoose.model("avatar", avatarSchema);
 const movieModel = mongoose.model("movie", movieSchema);
 const userModel = mongoose.model("user", userSchema);
+const hallModel = mongoose.model("hall", hallSchema);
+const seatModel = mongoose.model("seat", seatSchema);
+const showtimeModel = mongoose.model("showtime", showtimeSchema);
+const ticketModel = mongoose.model("ticket", ticketSchema);
+const theaterModel = mongoose.model("theater", theaterSchema);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("server started");
@@ -310,6 +357,33 @@ app.post("/reset_password/:id/:token", async (req, res) => {
   }
 
 });
+//history
+//main
+app.get("/theaters", async (req, res) => {
+  const theaters = await theaterModel.find();
+  res.send(theaters);
+});
+
+app.get("halls", async (req, res) => {
+  const halls = await hallModel.find();
+  res.send(halls);
+})
+
+app.get("/showtimes", async (req, res) => {
+  const showtimes = await showtimeModel.find();
+  res.send(showtimes);
+})
+
+app.get("/seats", async (req, res) => {
+  const seats = await seatModel.find();
+  res.send(seats);
+})
+
+app.get("/tickets", async (req, res) => {
+  const tickets = await ticketModel.find();
+  res.send(tickets);
+})
+
 
 
 main();
