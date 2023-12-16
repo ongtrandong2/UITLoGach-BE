@@ -45,13 +45,11 @@ async function main() {
 }
 
 const hallSchema = new mongoose.Schema({
-  _id: String,
   id: Number,
   name: String,
 });
 
 const seatSchema = new mongoose.Schema({
-  _id: String,
   id: Number,
   hallId: Number,
   type: String,
@@ -59,7 +57,6 @@ const seatSchema = new mongoose.Schema({
 });
 
 const showtimeSchema = new mongoose.Schema({
-  _id: String,
   id: Number,
   movieId: Number,
   theaterId: Number,
@@ -68,28 +65,24 @@ const showtimeSchema = new mongoose.Schema({
 });
 
 const ticketSchema = new mongoose.Schema({
-  _id: String,
   id: Number,
   showtimeId: Number,
   seatId: Number,
-  userId: Number,
+  userId: String,
 });
 
 const theaterSchema = new mongoose.Schema({
-  _id: String,
-  id: Number,
+  theaterId: String,
   name: String,
   address: String,
 });
 
 
 const avatarSchema = new mongoose.Schema({
-  _id: String,
   index: String,
   image: String,
 });
 const movieSchema = new mongoose.Schema({
-  _id: String,
   movieId: Number,
   name: String,
   image: String,
@@ -98,8 +91,6 @@ const movieSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
-  _id: String,
-  userId: Number,
   name: String,
   email: String,
   password: String,
@@ -107,6 +98,7 @@ const userSchema = new mongoose.Schema({
   gender: String,
   phone: String,
   spent: Number,
+  history: [{ type: String }]
 });
 
 const avatarModel = mongoose.model("avatar", avatarSchema);
@@ -358,6 +350,76 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //history
+app.get("/history",async(req, res)=>{
+
+  try {
+    const result = await userModel.aggregate([
+      {
+        $lookup: {
+          from: 'tickets', 
+          localField: 'history',
+          foreignField: 'id',
+          as: 'joinedData',
+        },
+      },
+    ]);
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Lỗi server');
+  }
+})
+
+app.get("/lookupShowtimeWithMovie",async(req, res)=>{
+
+  try {
+    const result = await showtimeModel.aggregate([
+      {
+        $lookup: {
+          from: 'movies', 
+          localField: 'movieId',
+          foreignField: 'movieId',
+          as: 'movie',
+        },
+      },
+      {
+        $lookup: {
+          from: 'theaters', 
+          localField: 'theaterId',
+          foreignField: 'theaterId',
+          as: 'theater',
+        },
+      }
+    ]);
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Lỗi server');
+  }
+})
+
+app.post("/history",async(req,res) => {
+  const {id,ticketId} = req.body;
+  const _id = id;
+
+  userModel.findByIdAndUpdate(_id , { $push: { history: ticketId } }, { new: true })
+  .then(updatedUser => {
+    if (!updatedUser) {
+      return res.status(404).send('User not found');
+    }
+
+    console.log('User đã được cập nhật:', updatedUser);
+    res.status(200).json(updatedUser);
+  })
+  .catch(err => {
+    console.error('Lỗi khi cập nhật user:', err);
+    res.status(500).send('Lỗi server');
+  });
+})
+
+
 //main
 app.get("/theaters", async (req, res) => {
   const theaters = await theaterModel.find();
