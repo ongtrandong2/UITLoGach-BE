@@ -220,8 +220,8 @@ async function JWTauthenticationMiddleware(req, res, next) {
 }
 
 app.get("/me", JWTauthenticationMiddleware, (req, res) => {
-  const { _id,name,email,date,gender,phone } = req.user;
-  const user = { _id,name,email,date,gender,phone }
+  const { _id,name,email,date,gender,phone,spent } = req.user;
+  const user = { _id,name,email,date,gender,phone,spent }
   res.send(user);
 });
 
@@ -371,7 +371,7 @@ app.get("/history",async(req, res)=>{
   }
 })
 
-app.get("/lookupShowtimeWithMovie",async(req, res)=>{
+app.get("/getSchedule",async(req, res)=>{
 
   try {
     const result = await showtimeModel.aggregate([
@@ -417,7 +417,7 @@ app.post("/history",async(req,res) => {
     console.error('Lỗi khi cập nhật user:', err);
     res.status(500).send('Lỗi server');
   });
-})
+})  
 
 
 //main
@@ -445,6 +445,40 @@ app.get("/tickets", async (req, res) => {
   const tickets = await ticketModel.find();
   res.send(tickets);
 })
+
+app.patch("/me/spent", JWTauthenticationMiddleware, async (req, res) => {
+  // Lấy dữ liệu cần update từ body
+  const { _id } = req.body;
+  const user = await userModel.findOne({ _id }).lean();
+  const length = user.history.length;
+  try {  
+    user.spent = 75000 * length;
+    await userModel.updateMany({ _id }, user);
+    res.json(user);  
+
+} catch(err) {
+if(!user) {
+return res.status(404).json({message: 'User not found'});
+}}
+})
+
+app.patch("/me/avt", JWTauthenticationMiddleware, async (req, res) => {
+  // Lấy dữ liệu cần update từ body
+  const { _id, avtId } = req.body;
+  const avatarURL = (await avatarModel.find()).find((avt) => avt.index == avtId).image;
+  console.log(avatarURL);
+  const user = await userModel.findOne({ _id }).lean();
+  try {  
+    user.avatar = avatarURL;
+    await userModel.updateMany({ _id }, user);
+    res.json(user);  
+
+} catch(err) {
+if(!user) {
+return res.status(404).json({message: 'User not found'});
+}}
+})
+
 
 
 
