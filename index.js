@@ -91,6 +91,7 @@ const movieSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
+  _id: mongoose.Schema.Types.ObjectId,
   name: String,
   email: String,
   password: String,
@@ -98,7 +99,11 @@ const userSchema = new mongoose.Schema({
   gender: String,
   phone: String,
   spent: Number,
-  history: [{ type: String }]
+});
+
+const historySchema = new mongoose.Schema({
+  ticketId: Number,
+  userId: mongoose.Schema.Types.ObjectId,
 });
 
 const avatarModel = mongoose.model("avatar", avatarSchema);
@@ -109,6 +114,7 @@ const seatModel = mongoose.model("seat", seatSchema);
 const showtimeModel = mongoose.model("showtime", showtimeSchema);
 const ticketModel = mongoose.model("ticket", ticketSchema);
 const theaterModel = mongoose.model("theater", theaterSchema);
+const historyModel = mongoose.model("history", historySchema);
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("server started");
@@ -349,17 +355,92 @@ app.post("/reset_password/:id/:token", async (req, res) => {
   }
 
 });
-//history
-app.get("/history",async(req, res)=>{
-
+//history 
+app.get("/getHistory", async (req, res) => {
+  const { Uid } = req.body;
   try {
+    var ObjectId = require('mongodb').ObjectId;
+    const id = new ObjectId(Uid);
     const result = await userModel.aggregate([
       {
+        $match: { _id: id }
+      },
+      {
         $lookup: {
-          from: 'tickets', 
-          localField: 'history',
+          from: 'histories',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'historiesDetails',
+        },
+      },
+      {
+        $unwind: "$historiesDetails" 
+      },
+      {
+        $lookup: {
+          from: 'tickets',
+          localField: 'historiesDetails.ticketId',
           foreignField: 'id',
-          as: 'joinedData',
+          as: 'historiesDetails.ticketsDetails',
+        },
+      },
+      {
+        $unwind: "$historiesDetails.ticketsDetails"
+      },
+      {
+        $lookup: {
+          from: 'seats',
+          localField: 'historiesDetails.ticketsDetails.seatId',
+          foreignField: 'id',
+          as: 'historiesDetails.ticketsDetails.seatDetails',
+        },
+      },
+      {
+        $unwind: "$historiesDetails.ticketsDetails.seatDetails"
+      },
+      {
+        $lookup: {
+          from: 'showtimes',
+          localField: 'historiesDetails.ticketsDetails.showtimeId',
+          foreignField: 'id',
+          as: 'historiesDetails.ticketsDetails.showtimeDetails',
+        },
+      },
+      {
+        $unwind: "$historiesDetails.ticketsDetails.showtimeDetails"
+      },
+      {
+        $lookup: {
+          from: 'theaters',
+          localField: 'historiesDetails.ticketsDetails.showtimeDetails.theaterId',
+          foreignField: 'theaterId',
+          as: 'historiesDetails.ticketsDetails.showtimeDetails.theaterDetails',
+        },
+      },
+      {
+        $unwind: "$historiesDetails.ticketsDetails.showtimeDetails.theaterDetails"
+      },
+      {
+        $lookup: {
+          from: 'movies',
+          localField: 'historiesDetails.ticketsDetails.showtimeDetails.movieId',
+          foreignField: 'movieId',
+          as: 'historiesDetails.ticketsDetails.showtimeDetails.movieDetails',
+        },
+      },
+      {
+        $unwind: "$historiesDetails.ticketsDetails.showtimeDetails.movieDetails"
+      },
+      {
+        $project: {
+          userId: '$_id',
+          ticketId: '$historiesDetails.ticketId',
+          seatId: '$historiesDetails.ticketsDetails.seatDetails.id',
+          price: '$historiesDetails.ticketsDetails.seatDetails.price',
+          movieName: '$historiesDetails.ticketsDetails.showtimeDetails.movieDetails.title',
+          theaterName: '$historiesDetails.ticketsDetails.showtimeDetails.theaterDetails.name',
+          date: '$historiesDetails.ticketsDetails.showtimeDetails.date',
+          time: '$historiesDetails.ticketsDetails.showtimeDetails.time',
         },
       },
     ]);
@@ -369,7 +450,21 @@ app.get("/history",async(req, res)=>{
     console.error(error);
     res.status(500).send('Lỗi server');
   }
-})
+});
+
+
+app.post("/postHistory",async(req,res) => {
+  const {id,ticketId} = req.body;
+  const _id = id;
+  try {
+    const history = new historyModel({ ticketId, userId: _id });
+    await history.save();
+    res.send("success add ticketId");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
 
 app.get("/getSchedule",async(req, res)=>{
 
@@ -399,25 +494,6 @@ app.get("/getSchedule",async(req, res)=>{
     res.status(500).send('Lỗi server');
   }
 })
-
-app.post("/history",async(req,res) => {
-  const {id,ticketId} = req.body;
-  const _id = id;
-
-  userModel.findByIdAndUpdate(_id , { $push: { history: ticketId } }, { new: true })
-  .then(updatedUser => {
-    if (!updatedUser) {
-      return res.status(404).send('User not found');
-    }
-
-    console.log('User đã được cập nhật:', updatedUser);
-    res.status(200).json(updatedUser);
-  })
-  .catch(err => {
-    console.error('Lỗi khi cập nhật user:', err);
-    res.status(500).send('Lỗi server');
-  });
-})  
 
 
 //main
@@ -471,13 +547,75 @@ app.patch("/me/avt", JWTauthenticationMiddleware, async (req, res) => {
   try {  
     user.avatar = avatarURL;
     await userModel.updateMany({ _id }, user);
-    res.json(user);  
+    res.json(user);
 
 } catch(err) {
 if(!user) {
 return res.status(404).json({message: 'User not found'});
 }}
 })
+
+//vnPay
+
+// router.post('/create_payment_url', function (req, res, next) {
+//   var ipAddr = req.headers['x-forwarded-for'] ||
+//       req.connection.remoteAddress ||
+//       req.socket.remoteAddress ||
+//       req.connection.socket.remoteAddress;
+
+//   var config = require('config');
+//   var dateFormat = require('dateformat');
+
+  
+//   var tmnCode = config.get('KK6J8T2X');
+//   var secretKey = config.get('FZKQEXGELYHWUXYHSLGGTLGXCPNQDBOI');
+//   var vnpUrl = config.get('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+//   var returnUrl = config.get('http://localhost:3019/vnpay_return');
+
+//   var date = new Date();
+
+//   var createDate = dateFormat(date, '20231219103111');
+//   var orderId = dateFormat(date, '103111');
+//   var amount = req.body.amount;
+//   var bankCode = req.body.bankCode;
+  
+//   var orderInfo = req.body.orderDescription;
+//   var orderType = req.body.orderType;
+//   var locale = req.body.language;
+//   if(locale === null || locale === ''){
+//       locale = 'vn';
+//   }
+//   var currCode = 'VND';
+//   var vnp_Params = {};
+//   vnp_Params['vnp_Version'] = '2.1.0';
+//   vnp_Params['vnp_Command'] = 'pay';
+//   vnp_Params['vnp_TmnCode'] = tmnCode;
+//   // vnp_Params['vnp_Merchant'] = ''
+//   vnp_Params['vnp_Locale'] = locale;
+//   vnp_Params['vnp_CurrCode'] = currCode;
+//   vnp_Params['vnp_TxnRef'] = orderId;
+//   vnp_Params['vnp_OrderInfo'] = orderInfo;
+//   vnp_Params['vnp_OrderType'] = orderType;
+//   vnp_Params['vnp_Amount'] = amount * 100;
+//   vnp_Params['vnp_ReturnUrl'] = returnUrl;
+//   vnp_Params['vnp_IpAddr'] = ipAddr;
+//   vnp_Params['vnp_CreateDate'] = createDate;
+//   if(bankCode !== null && bankCode !== ''){
+//       vnp_Params['vnp_BankCode'] = bankCode;
+//   }
+
+//   vnp_Params = sortObject(vnp_Params);
+
+//   var querystring = require('qs');
+//   var signData = querystring.stringify(vnp_Params, { encode: false });
+//   var crypto = require("crypto");     
+//   var hmac = crypto.createHmac("sha512", secretKey);
+//   var signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex"); 
+//   vnp_Params['vnp_SecureHash'] = signed;
+//   vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
+
+//   res.redirect(vnpUrl)
+// });
 
 
 
