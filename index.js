@@ -1,8 +1,11 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const https = require('https');
 const bcrypt = require("bcrypt");
+const crypto = require('crypto');
 var cors = require("cors");
+var bodyParser = require('body-parser')
 const e = require("express");
 const app = express();
 const nodemailer = require("nodemailer");
@@ -22,6 +25,7 @@ const mailTransport = () =>
 
 app.use(cors());
 app.use(express.json());
+app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
 app.set("view engine", "ejs");
 app.get("/products/:id", function (req, res, next) {
@@ -467,7 +471,6 @@ app.post("/postHistory",async(req,res) => {
 });
 
 app.get("/getSchedule",async(req, res)=>{
-
   try {
     const result = await showtimeModel.aggregate([
       {
@@ -555,69 +558,101 @@ return res.status(404).json({message: 'User not found'});
 }}
 })
 
-//vnPay
+//payment
+app.post("/payment", async (req, res) => {
+  const { Uid,ticketId,price } = req.body;
+  try {
+      // Handle the payment response from MoMo
+      console.log('Received payment callback from MoMo:');
+      console.log(req.body);
 
-// router.post('/create_payment_url', function (req, res, next) {
-//   var ipAddr = req.headers['x-forwarded-for'] ||
-//       req.connection.remoteAddress ||
-//       req.socket.remoteAddress ||
-//       req.connection.socket.remoteAddress;
+      const partnerCode = "MOMO";
+      const accessKey = process.env.accessKey;
+      const requestId = partnerCode + new Date().getTime();
+      const orderId = requestId;
+      const orderInfo = "pay with MoMo";
+      const redirectUrl = "https://momo.vn/return";
+      const ipnUrl = "https://callback.url/notify";
+      const amount = price;
+      const extraData = "";
+      const requestType = "captureWallet";
+      
+      const rawSignature = "accessKey=" + accessKey + "&amount=" + amount + "&extraData=" + extraData + "&ipnUrl=" + ipnUrl + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&partnerCode=" + partnerCode + "&redirectUrl=" + redirectUrl + "&requestId=" + requestId + "&requestType=" + requestType;
+      
+      const secretkey = process.env.secretkey;
+      const signature = crypto.createHmac('sha256', secretkey)
+          .update(rawSignature)
+          .digest('hex');
+      
+      const requestBody = JSON.stringify({
+          partnerCode: partnerCode,
+          accessKey: accessKey,
+          requestId: requestId,
+          amount: amount,
+          orderId: orderId,
+          orderInfo: orderInfo,
+          redirectUrl: redirectUrl,
+          ipnUrl: ipnUrl,
+          extraData: extraData,
+          requestType: requestType,
+          signature: signature,
+          lang: 'en'
+      });
 
-//   var config = require('config');
-//   var dateFormat = require('dateformat');
+      const options = {
+          hostname: 'test-payment.momo.vn',
+          port: 443,
+          path: '/v2/gateway/api/create',
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(requestBody)
+          }
+      }
 
-  
-//   var tmnCode = config.get('KK6J8T2X');
-//   var secretKey = config.get('FZKQEXGELYHWUXYHSLGGTLGXCPNQDBOI');
-//   var vnpUrl = config.get('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
-//   var returnUrl = config.get('http://localhost:3019/vnpay_return');
+      const paymentRequest = https.request(options, response => {
+          console.log(`Status: ${response.statusCode}`);
+          console.log(`Headers: ${JSON.stringify(response.headers)}`);
+          response.setEncoding('utf8');
+          let responseBody = '';
 
-//   var date = new Date();
+          response.on('data', (chunk) => {
+              responseBody += chunk;
+          });
 
-//   var createDate = dateFormat(date, '20231219103111');
-//   var orderId = dateFormat(date, '103111');
-//   var amount = req.body.amount;
-//   var bankCode = req.body.bankCode;
-  
-//   var orderInfo = req.body.orderDescription;
-//   var orderType = req.body.orderType;
-//   var locale = req.body.language;
-//   if(locale === null || locale === ''){
-//       locale = 'vn';
-//   }
-//   var currCode = 'VND';
-//   var vnp_Params = {};
-//   vnp_Params['vnp_Version'] = '2.1.0';
-//   vnp_Params['vnp_Command'] = 'pay';
-//   vnp_Params['vnp_TmnCode'] = tmnCode;
-//   // vnp_Params['vnp_Merchant'] = ''
-//   vnp_Params['vnp_Locale'] = locale;
-//   vnp_Params['vnp_CurrCode'] = currCode;
-//   vnp_Params['vnp_TxnRef'] = orderId;
-//   vnp_Params['vnp_OrderInfo'] = orderInfo;
-//   vnp_Params['vnp_OrderType'] = orderType;
-//   vnp_Params['vnp_Amount'] = amount * 100;
-//   vnp_Params['vnp_ReturnUrl'] = returnUrl;
-//   vnp_Params['vnp_IpAddr'] = ipAddr;
-//   vnp_Params['vnp_CreateDate'] = createDate;
-//   if(bankCode !== null && bankCode !== ''){
-//       vnp_Params['vnp_BankCode'] = bankCode;
-//   }
+          response.on('end', () => {
+              console.log('No more data in response.');
+              const payUrl = JSON.parse(responseBody).payUrl;
 
-//   vnp_Params = sortObject(vnp_Params);
+              // Send the MoMo transaction link as a response
+              res.json({
+                  status: 0,
+                  message: 'Payment link generated successfully',
+                  payUrl: payUrl
+              });
+          });
+      });
 
-//   var querystring = require('qs');
-//   var signData = querystring.stringify(vnp_Params, { encode: false });
-//   var crypto = require("crypto");     
-//   var hmac = crypto.createHmac("sha512", secretKey);
-//   var signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex"); 
-//   vnp_Params['vnp_SecureHash'] = signed;
-//   vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
+      paymentRequest.on('error', (e) => {
+          console.log(`Problem with request: ${e.message}`);
+          // Send an error response
+          res.json({
+              status: 1,
+              message: 'Error generating payment link'
+          });
+      });
 
-//   res.redirect(vnpUrl)
-// });
-
-
-
+      console.log("Sending....")
+      paymentRequest.write(requestBody);
+      paymentRequest.end();
+  } catch (error) {
+      console.error('Error processing MoMo payment callback:', error);
+      // Send an error response
+      res.json({
+          status: 1,
+          message: 'Error processing payment callback'
+      });
+  }
+});
 
 main();
