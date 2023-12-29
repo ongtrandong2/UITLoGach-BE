@@ -360,11 +360,11 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //history 
-app.get("/getHistory", async (req, res) => {
-  const { Uid } = req.body;
+app.get("/getHistory",JWTauthenticationMiddleware, async (req, res) => {
+  const { _id } = req.user;
   try {
     var ObjectId = require('mongodb').ObjectId;
-    const id = new ObjectId(Uid);
+    const id = new ObjectId(_id);
     const result = await userModel.aggregate([
       {
         $match: { _id: id }
