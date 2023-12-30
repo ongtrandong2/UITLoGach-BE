@@ -48,6 +48,13 @@ async function main() {
   }
 }
 
+const onProcess = new mongoose.Schema({
+  id: Number,
+  showtimeId: Number,
+  seatId: Number,
+  userId: mongoose.Schema.Types.ObjectId,
+}); 
+
 const hallSchema = new mongoose.Schema({
   id: Number,
   name: String,
@@ -72,7 +79,7 @@ const ticketSchema = new mongoose.Schema({
   id: Number,
   showtimeId: Number,
   seatId: Number,
-  userId: String,
+  userId: mongoose.Schema.Types.ObjectId,
 });
 
 const theaterSchema = new mongoose.Schema({
@@ -110,6 +117,7 @@ const historySchema = new mongoose.Schema({
   userId: mongoose.Schema.Types.ObjectId,
 });
 
+const onProcessModel = mongoose.model("onProcess", onProcess);
 const avatarModel = mongoose.model("avatar", avatarSchema);
 const movieModel = mongoose.model("movie", movieSchema);
 const userModel = mongoose.model("user", userSchema);
@@ -359,6 +367,108 @@ app.post("/reset_password/:id/:token", async (req, res) => {
   }
 
 });
+//postTicket
+app.post("/postTicket",JWTauthenticationMiddleware,async(req,res) => {
+  const { _id } = req.user;
+  const {ticketId, showtimeId, seatId} = req.body;
+  const idTicket = ticketId;
+  try {
+    var ObjectId = require('mongodb').ObjectId;
+    const userId = new ObjectId(_id);
+    const history = new historyModel({ ticketId: idTicket, userId: userId });
+    await history.save();
+    const ticket = new ticketModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
+    await ticket.save();
+    res.send("success add ticketId");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
+
+//onProcess
+app.post("/postProcess",JWTauthenticationMiddleware, async (req, res) => {
+  const { _id } = req.user;
+  const {ticketId, showtimeId, seatId} = req.body;
+  try {
+    var ObjectId = require('mongodb').ObjectId;
+    const userId = new ObjectId(_id);
+    const ticket = new onProcessModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
+    await ticket.save();
+    res.send("success add process");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+})
+
+app.get("/getProcess", async (req, res) => {
+  try {
+    const result = await onProcessModel.aggregate([
+      {
+        $lookup: {
+          from: 'seats',
+          localField: 'seatId',
+          foreignField: 'id',
+          as: 'seatDetails',
+        },
+      },
+      {
+        $unwind: "$seatDetails"
+      },
+      {
+        $lookup: {
+          from: 'showtimes',
+          localField: 'showtimeId',
+          foreignField: 'id',
+          as: 'showtimeDetails',
+        },
+      },
+      {
+        $unwind: "$showtimeDetails"
+      },
+      {
+        $lookup: {
+          from: 'theaters',
+          localField: 'showtimeDetails.theaterId',
+          foreignField: 'theaterId',
+          as: 'showtimeDetails.theaterDetails',
+        },
+      },
+      {
+        $unwind: "$showtimeDetails.theaterDetails"
+      },
+      {
+        $lookup: {
+          from: 'movies',
+          localField: 'showtimeDetails.movieId',
+          foreignField: 'movieId',
+          as: 'showtimeDetails.movieDetails',
+        },
+      },
+      {
+        $unwind: "$showtimeDetails.movieDetails"
+      },
+      {
+        $project: {
+          ticketId: '$ticketId',
+          seatId: '$seatDetails.id',
+          price: '$seatDetails.price',
+          movieName: '$showtimeDetails.movieDetails.title',
+          theaterName: '$showtimeDetails.theaterDetails.name',
+          date: '$showtimeDetails.date',
+          time: '$showtimeDetails.time',
+        },
+      },
+    ]);
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Lỗi server');
+  }
+},);
+
 //history 
 app.get("/getHistory",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
@@ -457,18 +567,7 @@ app.get("/getHistory",JWTauthenticationMiddleware, async (req, res) => {
 });
 
 
-app.post("/postHistory",async(req,res) => {
-  const {id,ticketId} = req.body;
-  const _id = id;
-  try {
-    const history = new historyModel({ ticketId, userId: _id });
-    await history.save();
-    res.send("success add ticketId");
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
+
 
 app.get("/getSchedule",async(req, res)=>{
   try {
@@ -527,11 +626,59 @@ app.get("/tickets", async (req, res) => {
 
 app.patch("/me/spent", JWTauthenticationMiddleware, async (req, res) => {
   // Lấy dữ liệu cần update từ body
-  const { _id } = req.body;
+  const { _id } = req.user;
+  const id = _id;
   const user = await userModel.findOne({ _id }).lean();
-  const length = user.history.length;
-  try {  
-    user.spent = 75000 * length;
+  const result = await userModel.aggregate([
+    {
+      $match: { _id: id }
+    },
+    {
+      $lookup: {
+        from: 'histories',
+        localField: '_id',
+        foreignField: 'userId',
+        as: 'historiesDetails',
+      },
+    },
+    {
+      $unwind: "$historiesDetails" 
+    },
+    {
+      $lookup: {
+        from: 'tickets',
+        localField: 'historiesDetails.ticketId',
+        foreignField: 'id',
+        as: 'historiesDetails.ticketsDetails',
+      },
+    },
+    {
+      $unwind: "$historiesDetails.ticketsDetails"
+    },
+    {
+      $lookup: {
+        from: 'seats',
+        localField: 'historiesDetails.ticketsDetails.seatId',
+        foreignField: 'id',
+        as: 'historiesDetails.ticketsDetails.seatDetails',
+      },
+    },
+    {
+      $unwind: "$historiesDetails.ticketsDetails.seatDetails"
+    },
+    {
+      $project: {
+        price: '$historiesDetails.ticketsDetails.seatDetails.price',
+      },
+    },
+  ]);
+  let totalPrice = 0;
+
+  for (const item of result) {
+      totalPrice += item.price;
+  }
+  try {
+    user.spent = totalPrice;
     await userModel.updateMany({ _id }, user);
     res.json(user);  
 
@@ -543,7 +690,8 @@ return res.status(404).json({message: 'User not found'});
 
 app.patch("/me/avt", JWTauthenticationMiddleware, async (req, res) => {
   // Lấy dữ liệu cần update từ body
-  const { _id, avtId } = req.body;
+  const { _id } = req.user;
+  const { avtId } = req.body;
   const avatarURL = (await avatarModel.find()).find((avt) => avt.index == avtId).image;
   console.log(avatarURL);
   const user = await userModel.findOne({ _id }).lean();
