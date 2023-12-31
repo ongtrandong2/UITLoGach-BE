@@ -318,7 +318,7 @@ app.post("/forgot_password", async (req, res) => {
     id: user._id,
   };
   const token = jwt.sign(payload, secret, { expiresIn: "15m" });
-  const link = `http://localhost:3000/resetpassword/${user._id}/${token}`;
+  const link = `https://ui-theater.vercel.app/resetpassword/${user._id}/${token}`;
   mailTransport().sendMail({
     from: process.env.MAILTRAN_USERNAME,
     to: user.email,
@@ -370,9 +370,9 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTicket",JWTauthenticationMiddleware,async(req,res) => {
+app.post("/postTicket/:ticketId/:showtimeId/:seatId",JWTauthenticationMiddleware,async(req,res) => {
   const { _id } = req.user;
-  const {ticketId, showtimeId, seatId} = req.body;
+  const {ticketId, showtimeId, seatId} = req.params;
   const idTicket = ticketId;
   try {
     var ObjectId = require('mongodb').ObjectId;
@@ -723,21 +723,29 @@ return res.status(404).json({message: 'User not found'});
 })
 
 //payment
+app.get("/payment/flag/:link", async (req, res) => {
+  const { link } = req.params;
+  try {
+    await ticketModel.updateOne({ id: ticketId }, { status: "paid" });
+    res.send("success update status");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
-  const {_id}= req.user;
-  const { ticketId,price } = req.body;
+  const { ticketId,showtimeId,seatId,price } = req.body;
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
       console.log(req.body);
-
       const partnerCode = "MOMO";
       const accessKey = process.env.accessKey;
       const requestId = partnerCode + new Date().getTime();
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
-      const redirectUrl = "https://momo.vn/return";
-      const ipnUrl = "https://uitlogachcu.onrender.com/postTicket";
+      const redirectUrl = "https://ui-theater.vercel.app/";
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${ticketId}/${showtimeId}/${seatId}`;
       const amount = price;
       const extraData = "";
       const requestType = "captureWallet";
