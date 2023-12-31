@@ -109,6 +109,7 @@ const userSchema = new mongoose.Schema({
   date: String,
   gender: String,
   phone: String,
+  avatar: String,
   spent: Number,
 });
 
@@ -188,9 +189,10 @@ app.post("/register", async (req, res) => {
     return res.status(400).send("Email already exists"); 
   }
   let { name, email, password, date, gender, ...rest } = req.body;
+  let avatar = "https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=%E2%80%A6";
   try {
     password = bcrypt.hashSync(password, 10);
-    const user = new userModel({ name, email, password, date, gender });
+    const user = new userModel({ name, email, password, date, gender,avatar });
     await user.save();
     res.send("success register");
   } catch (error) {
@@ -238,8 +240,8 @@ async function JWTauthenticationMiddleware(req, res, next) {
 }
 
 app.get("/me", JWTauthenticationMiddleware, (req, res) => {
-  const { _id,name,email,date,gender,phone,spent } = req.user;
-  const user = { _id,name,email,date,gender,phone,spent }
+  const { _id,name,email,date,gender,phone,spent,avatar } = req.user;
+  const user = { _id,name,email,date,gender,phone,spent,avatar }
   res.send(user);
 });
 
@@ -387,6 +389,20 @@ app.post("/postTicket",JWTauthenticationMiddleware,async(req,res) => {
 });
 
 //onProcess
+app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
+  const {_id} =req.user;
+  const{ticketId} = req.body;
+  try {
+    var ObjectId = require('mongodb').ObjectId;
+    const userId = new ObjectId(_id);
+    await onProcessModel.deleteOne({userId: userId, id: ticketId});
+    res.send("success delete process");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+})
+
 app.post("/postProcess",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
   const {ticketId, showtimeId, seatId} = req.body;
@@ -707,8 +723,9 @@ return res.status(404).json({message: 'User not found'});
 })
 
 //payment
-app.post("/payment", async (req, res) => {
-  const { Uid,ticketId,price } = req.body;
+app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
+  const {_id}= req.user;
+  const { ticketId,price } = req.body;
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
@@ -720,7 +737,7 @@ app.post("/payment", async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://momo.vn/return";
-      const ipnUrl = "https://callback.url/notify";
+      const ipnUrl = "https://uitlogachcu.onrender.com/postTicket";
       const amount = price;
       const extraData = "";
       const requestType = "captureWallet";
@@ -771,8 +788,6 @@ app.post("/payment", async (req, res) => {
           response.on('end', () => {
               console.log('No more data in response.');
               const payUrl = JSON.parse(responseBody).payUrl;
-
-              // Send the MoMo transaction link as a response
               res.json({
                   status: 0,
                   message: 'Payment link generated successfully',
