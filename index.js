@@ -508,6 +508,7 @@ app.get("/getProcess", async (req, res) => {
   }
 },);
 
+
 //history 
 app.get("/getHistory",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
@@ -773,7 +774,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       var orderId = requestId;
       var orderInfo = "pay with MoMo";
       var redirectUrl = "https://ui-theater.vercel.app/";
-      var ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
+      //var ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
+      var ipnUrl = `https://uitlogachcu.onrender.com/ipn`;
       console.log("ipn: ",ipnUrl);
       var amount = total;
       var extraData = "";
@@ -853,6 +855,19 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           message: 'Error processing payment callback'
       });
   }
+});
+
+// Endpoint để xử lý IPN
+app.post("/ipn", (req, res) => {
+  // Xác nhận tính hợp lệ của yêu cầu IPN ở đây
+  // Nếu hợp lệ, xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu
+  // Gửi xác nhận hoặc thực hiện các tác vụ khác cần thiết
+  console.log('Received IPN callback from MoMo:');
+  console.log(req.body);
+
+  // Xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu ở đây
+
+  res.status(200).send('IPN processed successfully');
 });
 
 main();
