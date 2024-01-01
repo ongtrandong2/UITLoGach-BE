@@ -370,22 +370,22 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTicket/:_id/:ticketId/:showtimeId/:seatId",async(req,res) => {
-  const {_id,ticketId, showtimeId, seatId} = req.params;
-  const idTicket = ticketId;
-  try {
-    var ObjectId = require('mongodb').ObjectId;
-    const userId = new ObjectId(_id);
-    const history = new historyModel({ ticketId: idTicket, userId: userId });
-    await history.save();
-    const ticket = new ticketModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
-    await ticket.save();
-    console.log("success add history");
-    res.send("success add ticketId");
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
+app.post("/postTicketIPN",async(req,res) => {
+  console.log(req.body);
+  res.sendStatus(200);
+  // try {
+  //   var ObjectId = require('mongodb').ObjectId;
+  //   const userId = new ObjectId(_id);
+  //   const history = new historyModel({ ticketId: idTicket, userId: userId });
+  //   await history.save();
+  //   const ticket = new ticketModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
+  //   await ticket.save();
+  //   console.log("success add history");
+  //   res.send("success add ticketId");
+  // } catch (error) {
+  //   console.error(error);
+  //   res.sendStatus(500);
+  // }
 });
 
 //onProcess
@@ -757,7 +757,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicketIPN`;
       const amount = price;
       const extraData = "";
       const requestType = "captureWallet";
