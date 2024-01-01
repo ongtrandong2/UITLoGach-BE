@@ -759,7 +759,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket?ticketArray=${ticketArray}`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket?ticketArray=${JSON.stringify(ticketArray)}`;
       console.log(ipnUrl);
       const amount = total;
       const extraData = "";
