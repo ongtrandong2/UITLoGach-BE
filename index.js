@@ -378,14 +378,13 @@ app.post("/postTickets",async (req, res) => {
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
-
     for (const ticketDataKey in parsedArray) {
       const ticketData = parsedArray[ticketDataKey];
       const { _id, ticketId, showtimeId, seatId } = ticketData;
       const userId = new ObjectId(_id);
       try {
         await onProcessModel.deleteOne({userId: userId, id: ticketId});
-        res.send("success delete process");
+        console.log("Success delete process");
       } catch (error) {
         console.error(error);
         res.sendStatus(500);
@@ -775,7 +774,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const requestId = partnerCode + new Date().getTime();
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
-      const redirectUrl = "https://ui-theater.vercel.app/movies";
+      const redirectUrl = "https://ui-theater.vercel.app/";
       const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
       console.log(ipnUrl);
       const amount = total;
