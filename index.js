@@ -373,7 +373,7 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTickets",JWTauthenticationMiddleware,async (req, res) => {
+app.post("/postTickets",async (req, res) => {
   const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   console.log("ticketArray",parsedArray);
@@ -384,7 +384,7 @@ app.post("/postTickets",JWTauthenticationMiddleware,async (req, res) => {
       const { _id, ticketId, showtimeId, seatId } = ticketData;
       const userId = new ObjectId(_id);
       console.log("userId",userId);
-      await onProcessModel.deleteOne({ id: ticketId });
+      //await onProcessModel.deleteOne({ id: ticketId });
       const history = new historyModel({ ticketId, userId });
       await history.save();
 
