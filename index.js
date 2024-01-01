@@ -730,7 +730,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
     total = total + price;
     ticketArray.push({ _id,ticketId, showtimeId, seatId });
   }
-  
+  console.log(ticketArray);
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
@@ -755,7 +755,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           .digest('hex');
       
       const requestBody = JSON.stringify({
-          ticketArray: JSON.stringify(ticketArray),
+          ticketArray: ticketArray,
           partnerCode: partnerCode,
           accessKey: accessKey,
           requestId: requestId,
@@ -826,7 +826,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
 
 //postTicket
 app.post("/postTickets",async (req, res) => {
-  const {ticketArray} = req.body; // Lấy mảng ticketData từ query parameters
+  const {ticketArray} = req.body; 
   console.log("ticketArray",ticketArray);
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   try {
