@@ -373,7 +373,7 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTickets", async (req, res) => {
+app.post("/postTickets",async (req, res) => {
   const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   try {
@@ -383,7 +383,13 @@ app.post("/postTickets", async (req, res) => {
       const ticketData = parsedArray[ticketDataKey];
       const { _id, ticketId, showtimeId, seatId } = ticketData;
       const userId = new ObjectId(_id);
-
+      try {
+        await onProcessModel.deleteOne({userId: userId, id: ticketId});
+        res.send("success delete process");
+      } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
+      }
       const history = new historyModel({ ticketId, userId });
       await history.save();
 
@@ -419,13 +425,21 @@ app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
 
 app.post("/postProcess",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
-  const {ticketId, showtimeId, seatId} = req.body;
+  var ObjectId = require('mongodb').ObjectId;
+  const userId = new ObjectId(_id);
+  const { ticketArray } = req.body;
+  console.log("ticketArray",ticketArray);
+  
   try {
-    var ObjectId = require('mongodb').ObjectId;
-    const userId = new ObjectId(_id);
-    const ticket = new onProcessModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
-    await ticket.save();
-    res.send("success add process");
+    for (const ticketDataKey in ticketArray) {
+      const ticketData = ticketArray[ticketDataKey];
+      const {ticketId, showtimeId, seatId } = ticketData;
+      const ticket = new onProcessModel({ id: ticketId, showtimeId, seatId, userId });
+      await ticket.save();
+    }
+
+    console.log("Success adding process");
+    res.send("Success adding process");
   } catch (error) {
     console.error(error);
     res.sendStatus(500);
