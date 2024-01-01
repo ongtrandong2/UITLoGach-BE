@@ -373,7 +373,7 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTickets",async (req, res) => {
+app.post("/postTickets",JWTauthenticationMiddleware,async (req, res) => {
   const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   console.log("ticketArray",parsedArray);
@@ -802,14 +802,14 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       });
 
       const options = {
-          hostname: 'test-payment.momo.vn',
-          port: 443,
-          path: '/v2/gateway/api/create',
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(requestBody)
-          }
+        hostname: 'test-payment.momo.vn',
+        port: 443,
+        path: '/v2/gateway/api/create',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(requestBody)
+        }
       }
 
       const paymentRequest = https.request(options, response => {
