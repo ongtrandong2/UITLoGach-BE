@@ -465,6 +465,7 @@ app.get("/getProcess", async (req, res) => {
           price: '$seatDetails.price',
           movieName: '$showtimeDetails.movieDetails.title',
           theaterName: '$showtimeDetails.theaterDetails.name',
+          showtimeId: '$showtimeDetails.id',
           date: '$showtimeDetails.date',
           time: '$showtimeDetails.time',
         },
@@ -742,7 +743,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${abc}`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicketsIPN?ticketArray=${abc}`;
       console.log(ipnUrl);
       const amount = total;
       const extraData = "";
@@ -825,7 +826,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
 });
 
 //postTicket
-app.post("/postTickets", async (req, res) => {
+app.post("/postTicketsIPN", async (req, res) => {
   console.log("aaaaaaaa");
   const { ticketArray } = req.query;
   console.log("res: ", req.body);
