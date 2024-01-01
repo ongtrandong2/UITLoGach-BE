@@ -234,7 +234,6 @@ async function JWTauthenticationMiddleware(req, res, next) {
     console.log(decoded);
     if (user) {
       req.user = user;
-
       next();
     }
   } catch (error) {
