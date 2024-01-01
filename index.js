@@ -370,9 +370,8 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTicket/:ticketId/:showtimeId/:seatId",JWTauthenticationMiddleware,async(req,res) => {
-  const { _id } = req.user;
-  const {ticketId, showtimeId, seatId} = req.params;
+app.post("/postTicket/:_id/:ticketId/:showtimeId/:seatId",JWTauthenticationMiddleware,async(req,res) => {
+  const {_id,ticketId, showtimeId, seatId} = req.params;
   const idTicket = ticketId;
   try {
     var ObjectId = require('mongodb').ObjectId;
@@ -734,6 +733,7 @@ app.get("/payment/flag/:link", async (req, res) => {
   }
 });
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
+  const { _id } = req.user;
   const { ticketId,showtimeId,seatId,price } = req.body;
   try {
       // Handle the payment response from MoMo
@@ -745,7 +745,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${ticketId}/${showtimeId}/${seatId}`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
       const amount = price;
       const extraData = "";
       const requestType = "captureWallet";
