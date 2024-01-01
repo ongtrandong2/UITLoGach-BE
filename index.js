@@ -370,7 +370,7 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTicket/:_id/:ticketId/:showtimeId/:seatId",JWTauthenticationMiddleware,async(req,res) => {
+app.post("/postTicket/:_id/:ticketId/:showtimeId/:seatId",async(req,res) => {
   const {_id,ticketId, showtimeId, seatId} = req.params;
   const idTicket = ticketId;
   try {
