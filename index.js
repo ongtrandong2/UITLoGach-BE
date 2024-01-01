@@ -774,8 +774,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       var orderId = requestId;
       var orderInfo = "pay with MoMo";
       var redirectUrl = "https://ui-theater.vercel.app/";
-      //var ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
-      var ipnUrl = `https://uitlogachcu.onrender.com/ipn`;
+      var ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
+      // var ipnUrl = `https://uitlogachcu.onrender.com/ipn`;
       console.log("ipn: ",ipnUrl);
       var amount = total;
       var extraData = "";
