@@ -732,6 +732,17 @@ app.get("/payment/flag/:link", async (req, res) => {
     res.sendStatus(500);
   }
 });
+app.post("/ipn", (req, res) => {
+  // Xác nhận tính hợp lệ của yêu cầu IPN ở đây
+  // Nếu hợp lệ, xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu
+  // Gửi xác nhận hoặc thực hiện các tác vụ khác cần thiết
+  console.log('Received IPN callback from MoMo:');
+  console.log(req.body);
+
+  // Xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu ở đây
+
+  res.status(200).send('IPN processed successfully');
+});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
   const { ticketId,showtimeId,seatId,price } = req.body;
@@ -745,7 +756,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
+      // const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/ipn`;
       const amount = price;
       const extraData = "";
       const requestType = "captureWallet";
