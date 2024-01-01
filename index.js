@@ -380,6 +380,7 @@ app.post("/postTicket/:_id/:ticketId/:showtimeId/:seatId",async(req,res) => {
     await history.save();
     const ticket = new ticketModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
     await ticket.save();
+    console.log("success add history");
     res.send("success add ticketId");
   } catch (error) {
     console.error(error);
@@ -755,9 +756,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const requestId = partnerCode + new Date().getTime();
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
-      const redirectUrl = "https://ui-theater.vercel.app/";
-      // const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
-      const ipnUrl = `https://uitlogachcu.onrender.com/ipn`;
+      const redirectUrl = "https://ui-theater.vercel.app/movies";
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
       const amount = price;
       const extraData = "";
       const requestType = "captureWallet";
