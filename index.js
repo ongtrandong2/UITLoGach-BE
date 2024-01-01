@@ -781,70 +781,60 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       
       const rawSignature = "accessKey=" + accessKey + "&amount=" + amount + "&extraData=" + extraData + "&ipnUrl=" + ipnUrl + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&partnerCode=" + partnerCode + "&redirectUrl=" + redirectUrl + "&requestId=" + requestId + "&requestType=" + requestType;
       
-      const secretkey = process.env.secretkey;
+      var secretkey = process.env.secretkey;
       const signature = crypto.createHmac('sha256', secretkey)
           .update(rawSignature)
           .digest('hex');
       
-      const requestBody = JSON.stringify({
-          partnerCode: partnerCode,
-          accessKey: accessKey,
-          requestId: requestId,
-          amount: amount,
-          orderId: orderId,
-          orderInfo: orderInfo,
-          redirectUrl: redirectUrl,
-          ipnUrl: ipnUrl,
-          extraData: extraData,
-          requestType: requestType,
-          signature: signature,
-          lang: 'en'
-      });
-
-      const options = {
-          hostname: 'test-payment.momo.vn',
-          port: 443,
-          path: '/v2/gateway/api/create',
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(requestBody)
-          }
-      }
-
-      const paymentRequest = https.request(options, response => {
-          console.log(`Status: ${response.statusCode}`);
-          console.log(`Headers: ${JSON.stringify(response.headers)}`);
-          response.setEncoding('utf8');
-          let responseBody = '';
-
-          response.on('data', (chunk) => {
-              responseBody += chunk;
-          });
-
-          response.on('end', () => {
-              console.log('No more data in response.');
-              const payUrl = JSON.parse(responseBody).payUrl;
-              res.json({
-                  status: 0,
-                  message: 'Payment link generated successfully',
-                  payUrl: payUrl
-              });
-          });
-      });
-
-      paymentRequest.on('error', (e) => {
-          console.log(`Problem with request: ${e.message}`);
-          // Send an error response
-          res.json({
-              status: 1,
-              message: 'Error generating payment link'
-          });
-      });
-
-      console.log("Sending....")
-      paymentRequest.write(requestBody);
-      paymentRequest.end();
+          const requestBody = JSON.stringify({
+            partnerCode : partnerCode,
+            accessKey : accessKey,
+            requestId : requestId,
+            amount : amount,
+            orderId : orderId,
+            orderInfo : orderInfo,
+            redirectUrl : redirectUrl,
+            ipnUrl : ipnUrl,
+            extraData : extraData,
+            requestType : requestType,
+            signature : signature,
+            lang: 'en'
+        });
+        //Create the HTTPS objects
+        const https = require('https');
+        const options = {
+            hostname: 'test-payment.momo.vn',
+            port: 443,
+            path: '/v2/gateway/api/create',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(requestBody)
+            }
+        }
+        //Send the request and get the response
+        const req = https.request(options, res => {
+            console.log(`Status: ${res.statusCode}`);
+            console.log(`Headers: ${JSON.stringify(res.headers)}`);
+            res.setEncoding('utf8');
+            res.on('data', (body) => {
+                console.log('Body: ');
+                console.log(body);
+                console.log('payUrl: ');
+                console.log(JSON.parse(body).payUrl);
+            });
+            res.on('end', () => {
+                console.log('No more data in response.');
+            });
+        })
+        
+        req.on('error', (e) => {
+            console.log(`problem with request: ${e.message}`);
+        });
+        // write data to request body
+        console.log("Sending....")
+        req.write(requestBody);
+        req.end();
   } catch (error) {
       console.error('Error processing MoMo payment callback:', error);
       // Send an error response
