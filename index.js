@@ -721,16 +721,16 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const {json} = req.body;
   // Lặp qua mỗi đối tượng trong mảng
   let total = 0;
-  let ticketArray = [];
+  var ticketArray12 = [];
   for (const item of json) {
     const { ticketId, showtimeId, seatId,price } = item;
 
     // Xử lý mỗi đối tượng
     console.log(`ticketId: ${ticketId}, showtimeId: ${showtimeId}, seatId: ${seatId}, price: ${price}`);
     total = total + price;
-    ticketArray.push({ _id,ticketId, showtimeId, seatId });
+    ticketArray12.push({ _id,ticketId, showtimeId, seatId });
   }
-  console.log(ticketArray);
+  console.log("ddaaay: ",ticketArray12);
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
@@ -755,7 +755,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           .digest('hex');
       
       const requestBody = JSON.stringify({
-          ticketArray: ticketArray,
+          ticketArray: ticketArray12,
           partnerCode: partnerCode,
           accessKey: accessKey,
           requestId: requestId,
@@ -826,7 +826,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
 
 //postTicket
 app.post("/postTickets",async (req, res) => {
-  const {ticketArray} = req.body; 
+  const { ticketArray } = req.body; 
+  console.log("res: ", req.body);
   console.log("ticketArray",ticketArray);
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   try {
