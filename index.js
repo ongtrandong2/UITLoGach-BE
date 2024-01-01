@@ -741,7 +741,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray12)}`;
       console.log(ipnUrl);
       const amount = total;
       const extraData = "";
@@ -755,7 +755,6 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           .digest('hex');
       
       const requestBody = JSON.stringify({
-          ticketArray: ticketArray12,
           partnerCode: partnerCode,
           accessKey: accessKey,
           requestId: requestId,
@@ -825,8 +824,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
 });
 
 //postTicket
-app.post("/postTickets",async (req, res) => {
-  const { ticketArray } = req.body; 
+app.post("/postTickets/:ticketArray",async (req, res) => {
+  const { ticketArray } = req.params; 
   console.log("res: ", req.body);
   console.log("ticketArray",ticketArray);
   const parsedArray = JSON.parse(ticketArray);
