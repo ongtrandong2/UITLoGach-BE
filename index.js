@@ -373,22 +373,17 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTickets",async (req, res) => {
+app.post("/postTickets", async (req, res) => {
   const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
   const parsedArray = JSON.parse(ticketArray.ticketArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
+
     for (const ticketDataKey in parsedArray) {
       const ticketData = parsedArray[ticketDataKey];
       const { _id, ticketId, showtimeId, seatId } = ticketData;
       const userId = new ObjectId(_id);
-      try {
-        await onProcessModel.deleteOne({userId: userId, id: ticketId});
-        console.log("Success delete process");
-      } catch (error) {
-        console.error(error);
-        res.sendStatus(500);
-      }
+
       const history = new historyModel({ ticketId, userId });
       await history.save();
 
@@ -424,21 +419,13 @@ app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
 
 app.post("/postProcess",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
-  var ObjectId = require('mongodb').ObjectId;
-  const userId = new ObjectId(_id);
-  const { ticketArray } = req.body;
-  console.log("ticketArray",ticketArray);
-  
+  const {ticketId, showtimeId, seatId} = req.body;
   try {
-    for (const ticketDataKey in ticketArray) {
-      const ticketData = ticketArray[ticketDataKey];
-      const {ticketId, showtimeId, seatId } = ticketData;
-      const ticket = new onProcessModel({ id: ticketId, showtimeId, seatId, userId });
-      await ticket.save();
-    }
-
-    console.log("Success adding process");
-    res.send("Success adding process");
+    var ObjectId = require('mongodb').ObjectId;
+    const userId = new ObjectId(_id);
+    const ticket = new onProcessModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
+    await ticket.save();
+    res.send("success add process");
   } catch (error) {
     console.error(error);
     res.sendStatus(500);
@@ -774,7 +761,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const requestId = partnerCode + new Date().getTime();
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
-      const redirectUrl = "https://ui-theater.vercel.app/";
+      const redirectUrl = "https://ui-theater.vercel.app/movies";
       const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
       console.log(ipnUrl);
       const amount = total;
