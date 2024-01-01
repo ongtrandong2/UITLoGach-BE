@@ -825,6 +825,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
 
 //postTicket
 app.post("/postTickets", async (req, res) => {
+  console.log("aaaaaaaa");
   const { ticketArray } = req.query;
   console.log("res: ", req.body);
   console.log("ticketArray",ticketArray);
