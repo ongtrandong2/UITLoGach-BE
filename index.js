@@ -824,8 +824,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
 });
 
 //postTicket
-app.post("/postTickets/:ticketArray",async (req, res) => {
-  const { ticketArray } = req.params; 
+app.post("/postTickets", async (req, res) => {
+  const { ticketArray } = req.query;
   console.log("res: ", req.body);
   console.log("ticketArray",ticketArray);
   const parsedArray = JSON.parse(ticketArray);
