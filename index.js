@@ -102,7 +102,6 @@ const movieSchema = new mongoose.Schema({
 });
 
 const userSchema = new mongoose.Schema({
-  _id: mongoose.Schema.Types.ObjectId,
   name: String,
   email: String,
   password: String,
@@ -184,15 +183,19 @@ app.get("/one_movie", async (req, res) => {
 //User
 
 app.post("/register", async (req, res) => {
+  const { email } = req.body; // Move this line up
   const existingUser = await userModel.findOne({ email });
+
   if (existingUser) {
-    return res.status(400).send("Email already exists"); 
+    return res.status(400).send("Email already exists");
   }
-  let { name, email, password, date, gender, ...rest } = req.body;
+
+  let { name, password, date, gender, ...rest } = req.body;
   let avatar = "https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=%E2%80%A6";
+
   try {
     password = bcrypt.hashSync(password, 10);
-    const user = new userModel({ name, email, password, date, gender,avatar });
+    const user = new userModel({ name, email, password, date, gender, avatar });
     await user.save();
     res.send("success register");
   } catch (error) {
@@ -369,24 +372,6 @@ app.post("/reset_password/:id/:token", async (req, res) => {
   }
 
 });
-//postTicket
-app.post("/postTicketIPN",async(req,res) => {
-  console.log(req.body);
-  res.sendStatus(200);
-  // try {
-  //   var ObjectId = require('mongodb').ObjectId;
-  //   const userId = new ObjectId(_id);
-  //   const history = new historyModel({ ticketId: idTicket, userId: userId });
-  //   await history.save();
-  //   const ticket = new ticketModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
-  //   await ticket.save();
-  //   console.log("success add history");
-  //   res.send("success add ticketId");
-  // } catch (error) {
-  //   console.error(error);
-  //   res.sendStatus(500);
-  // }
-});
 
 //onProcess
 app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
@@ -405,13 +390,21 @@ app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
 
 app.post("/postProcess",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
-  const {ticketId, showtimeId, seatId} = req.body;
+  var ObjectId = require('mongodb').ObjectId;
+  const userId = new ObjectId(_id);
+  const { ticketArray } = req.body;
+  console.log("ticketArray",ticketArray);
+  
   try {
-    var ObjectId = require('mongodb').ObjectId;
-    const userId = new ObjectId(_id);
-    const ticket = new onProcessModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
-    await ticket.save();
-    res.send("success add process");
+    for (const ticketDataKey in ticketArray) {
+      const ticketData = ticketArray[ticketDataKey];
+      const {ticketId, showtimeId, seatId } = ticketData;
+      const ticket = new onProcessModel({ id: ticketId, showtimeId, seatId, userId });
+      await ticket.save();
+    }
+
+    console.log("Success adding process");
+    res.send("Success adding process");
   } catch (error) {
     console.error(error);
     res.sendStatus(500);
@@ -723,30 +716,21 @@ return res.status(404).json({message: 'User not found'});
 })
 
 //payment
-app.get("/payment/flag/:link", async (req, res) => {
-  const { link } = req.params;
-  try {
-    await ticketModel.updateOne({ id: ticketId }, { status: "paid" });
-    res.send("success update status");
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-app.post("/ipn", (req, res) => {
-  // Xác nhận tính hợp lệ của yêu cầu IPN ở đây
-  // Nếu hợp lệ, xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu
-  // Gửi xác nhận hoặc thực hiện các tác vụ khác cần thiết
-  console.log('Received IPN callback from MoMo:');
-  console.log(req.body);
-
-  // Xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu ở đây
-
-  res.status(200).send('IPN processed successfully');
-});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
-  const { ticketId,showtimeId,seatId,price } = req.body;
+  const {json} = req.body;
+  // Lặp qua mỗi đối tượng trong mảng
+  let total = 0;
+  let ticketArray = [];
+  for (const item of json) {
+    const { ticketId, showtimeId, seatId,price } = item;
+
+    // Xử lý mỗi đối tượng
+    console.log(`ticketId: ${ticketId}, showtimeId: ${showtimeId}, seatId: ${seatId}, price: ${price}`);
+    total = total + price;
+    ticketArray.push({ _id,ticketId, showtimeId, seatId });
+  }
+  
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
@@ -757,8 +741,9 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTicketIPN`;
-      const amount = price;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets`;
+      console.log(ipnUrl);
+      const amount = total;
       const extraData = "";
       const requestType = "captureWallet";
       
@@ -770,6 +755,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           .digest('hex');
       
       const requestBody = JSON.stringify({
+          ticketArray: JSON.stringify(ticketArray),
           partnerCode: partnerCode,
           accessKey: accessKey,
           requestId: requestId,
@@ -835,6 +821,40 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           status: 1,
           message: 'Error processing payment callback'
       });
+  }
+});
+
+//postTicket
+app.post("/postTickets",async (req, res) => {
+  const {ticketArray} = req.body; // Lấy mảng ticketData từ query parameters
+  console.log("ticketArray",ticketArray);
+  const parsedArray = JSON.parse(ticketArray.ticketArray);
+  try {
+    var ObjectId = require('mongodb').ObjectId;
+
+    for (const ticketDataKey in parsedArray) {
+      const ticketData = parsedArray[ticketDataKey];
+      const { _id, ticketId, showtimeId, seatId } = ticketData;
+      const userId = new ObjectId(_id);
+      try {
+        await onProcessModel.deleteOne({userId: userId, id: ticketId});
+        res.send("success delete process");
+      } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
+      }
+      const history = new historyModel({ ticketId, userId });
+      await history.save();
+
+      const ticket = new ticketModel({ id: ticketId, showtimeId, seatId, userId });
+      await ticket.save();
+    }
+
+    console.log("Success adding history and tickets");
+    res.send("Success adding tickets");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
   }
 });
 
