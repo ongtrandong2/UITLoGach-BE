@@ -184,15 +184,19 @@ app.get("/one_movie", async (req, res) => {
 //User
 
 app.post("/register", async (req, res) => {
+  const { email } = req.body; // Move this line up
   const existingUser = await userModel.findOne({ email });
+
   if (existingUser) {
-    return res.status(400).send("Email already exists"); 
+    return res.status(400).send("Email already exists");
   }
-  let { name, email, password, date, gender, ...rest } = req.body;
+
+  let { name, password, date, gender, ...rest } = req.body;
   let avatar = "https://images.pexels.com/photos/247502/pexels-photo-247502.jpeg?auto=%E2%80%A6";
+
   try {
     password = bcrypt.hashSync(password, 10);
-    const user = new userModel({ name, email, password, date, gender,avatar });
+    const user = new userModel({ name, email, password, date, gender, avatar });
     await user.save();
     res.send("success register");
   } catch (error) {
