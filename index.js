@@ -752,6 +752,7 @@ return res.status(404).json({message: 'User not found'});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
   const {json} = req.body;
+  console.log("json: ",json);
   // Lặp qua mỗi đối tượng trong mảng
   let total = 0;
   let ticketArray = [];
@@ -763,6 +764,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
     total = total + price;
     ticketArray.push({ _id,ticketId, showtimeId, seatId });
   }
+  console.log("ticketArray: ",ticketArray);
   
   try {
       // Handle the payment response from MoMo
@@ -775,7 +777,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/";
       const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
-      console.log(ipnUrl);
+      console.log("ipn: ",ipnUrl);
       const amount = total;
       const extraData = "";
       const requestType = "captureWallet";
