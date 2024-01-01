@@ -731,6 +731,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
     ticketArray12.push({ _id,ticketId, showtimeId, seatId });
   }
   console.log("ddaaay: ",ticketArray12);
+  const abc = JSON.stringify(ticketArray12);
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
@@ -741,7 +742,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${ticketArray12}`;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${abc}`;
       console.log(ipnUrl);
       const amount = total;
       const extraData = "";
