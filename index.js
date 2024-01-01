@@ -1,6 +1,7 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+var fs = require('fs');
 const https = require('https');
 const bcrypt = require("bcrypt");
 const crypto = require('crypto');
@@ -234,7 +235,6 @@ async function JWTauthenticationMiddleware(req, res, next) {
     console.log(decoded);
     if (user) {
       req.user = user;
-
       next();
     }
   } catch (error) {
@@ -376,20 +376,23 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 app.post("/postTickets",async (req, res) => {
   const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
   const parsedArray = JSON.parse(ticketArray.ticketArray);
+  console.log("ticketArray",parsedArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
-
     for (const ticketDataKey in parsedArray) {
       const ticketData = parsedArray[ticketDataKey];
       const { _id, ticketId, showtimeId, seatId } = ticketData;
       const userId = new ObjectId(_id);
-      try {
-        await onProcessModel.deleteOne({userId: userId, id: ticketId});
-        res.send("success delete process");
-      } catch (error) {
-        console.error(error);
-        res.sendStatus(500);
-      }
+      console.log("userId",userId);
+      const OnProcessModel = mongoose.model('onProcesses', onProcessSchema);
+
+      OnProcessModel.deleteOne({ id: ti }, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log('Field deleted successfully');
+      });
       const history = new historyModel({ ticketId, userId });
       await history.save();
 
@@ -409,9 +412,8 @@ app.post("/postTickets",async (req, res) => {
 
 
 //onProcess
-app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
-  const {_id} =req.user;
-  const{ticketId} = req.body;
+app.delete("/deleteProcess",async (req,res)=>{
+  const{_id,ticketId} = req.body;
   try {
     var ObjectId = require('mongodb').ObjectId;
     const userId = new ObjectId(_id);
@@ -498,6 +500,7 @@ app.get("/getProcess", async (req, res) => {
           ticketId: '$ticketId',
           seatId: '$seatDetails.id',
           price: '$seatDetails.price',
+          showtimeId: '$showtimeDetails.id',
           movieName: '$showtimeDetails.movieDetails.title',
           theaterName: '$showtimeDetails.theaterDetails.name',
           date: '$showtimeDetails.date',
@@ -754,6 +757,7 @@ return res.status(404).json({message: 'User not found'});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
   const {json} = req.body;
+  console.log("json: ",json);
   // Lặp qua mỗi đối tượng trong mảng
   let total = 0;
   let ticketArray = [];
@@ -765,6 +769,7 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
     total = total + price;
     ticketArray.push({ _id,ticketId, showtimeId, seatId });
   }
+  console.log("ticketArray: ",ticketArray);
   
   try {
       // Handle the payment response from MoMo
@@ -775,9 +780,9 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const requestId = partnerCode + new Date().getTime();
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
-      const redirectUrl = "https://ui-theater.vercel.app/movies";
+      const redirectUrl = "https://ui-theater.vercel.app/";
       const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
-      console.log(ipnUrl);
+      console.log("ipn: ",ipnUrl);
       const amount = total;
       const extraData = "";
       const requestType = "captureWallet";
