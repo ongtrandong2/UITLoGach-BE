@@ -829,7 +829,7 @@ app.post("/postTickets",async (req, res) => {
   const { ticketArray } = req.body; 
   console.log("res: ", req.body);
   console.log("ticketArray",ticketArray);
-  const parsedArray = JSON.parse(ticketArray.ticketArray);
+  const parsedArray = JSON.parse(ticketArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
 
