@@ -1,7 +1,6 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-var fs = require('fs');
 const https = require('https');
 const bcrypt = require("bcrypt");
 const crypto = require('crypto');
@@ -235,6 +234,7 @@ async function JWTauthenticationMiddleware(req, res, next) {
     console.log(decoded);
     if (user) {
       req.user = user;
+
       next();
     }
   } catch (error) {
@@ -376,15 +376,20 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 app.post("/postTickets",async (req, res) => {
   const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
   const parsedArray = JSON.parse(ticketArray.ticketArray);
-  console.log("ticketArray",parsedArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
+
     for (const ticketDataKey in parsedArray) {
       const ticketData = parsedArray[ticketDataKey];
       const { _id, ticketId, showtimeId, seatId } = ticketData;
       const userId = new ObjectId(_id);
-      console.log("userId",userId);
-      //await onProcessModel.deleteOne({ id: ticketId });
+      try {
+        await onProcessModel.deleteOne({userId: userId, id: ticketId});
+        res.send("success delete process");
+      } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
+      }
       const history = new historyModel({ ticketId, userId });
       await history.save();
 
@@ -404,8 +409,9 @@ app.post("/postTickets",async (req, res) => {
 
 
 //onProcess
-app.delete("/deleteProcess",async (req,res)=>{
-  const{_id,ticketId} = req.body;
+app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
+  const {_id} =req.user;
+  const{ticketId} = req.body;
   try {
     var ObjectId = require('mongodb').ObjectId;
     const userId = new ObjectId(_id);
@@ -492,7 +498,6 @@ app.get("/getProcess", async (req, res) => {
           ticketId: '$ticketId',
           seatId: '$seatDetails.id',
           price: '$seatDetails.price',
-          showtimeId: '$showtimeDetails.id',
           movieName: '$showtimeDetails.movieDetails.title',
           theaterName: '$showtimeDetails.theaterDetails.name',
           date: '$showtimeDetails.date',
@@ -507,7 +512,6 @@ app.get("/getProcess", async (req, res) => {
     res.status(500).send('Lỗi server');
   }
 },);
-
 
 //history 
 app.get("/getHistory",JWTauthenticationMiddleware, async (req, res) => {
@@ -750,7 +754,6 @@ return res.status(404).json({message: 'User not found'});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
   const {json} = req.body;
-  console.log("json: ",json);
   // Lặp qua mỗi đối tượng trong mảng
   let total = 0;
   let ticketArray = [];
@@ -762,28 +765,26 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
     total = total + price;
     ticketArray.push({ _id,ticketId, showtimeId, seatId });
   }
-  console.log("ticketArray: ",ticketArray);
   
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
       console.log(req.body);
-      var partnerCode = "MOMO";
-      var accessKey = process.env.accessKey;
-      var requestId = partnerCode + new Date().getTime();
-      var orderId = requestId;
-      var orderInfo = "pay with MoMo";
-      var redirectUrl = "https://ui-theater.vercel.app/";
-      var ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
-      // var ipnUrl = `https://uitlogachcu.onrender.com/ipn`;
-      console.log("ipn: ",ipnUrl);
-      var amount = total;
-      var extraData = "";
-      var requestType = "captureWallet";
+      const partnerCode = "MOMO";
+      const accessKey = process.env.accessKey;
+      const requestId = partnerCode + new Date().getTime();
+      const orderId = requestId;
+      const orderInfo = "pay with MoMo";
+      const redirectUrl = "https://ui-theater.vercel.app/movies";
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTickets?ticketArray=${JSON.stringify(ticketArray)}`;
+      console.log(ipnUrl);
+      const amount = total;
+      const extraData = "";
+      const requestType = "captureWallet";
       
       const rawSignature = "accessKey=" + accessKey + "&amount=" + amount + "&extraData=" + extraData + "&ipnUrl=" + ipnUrl + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&partnerCode=" + partnerCode + "&redirectUrl=" + redirectUrl + "&requestId=" + requestId + "&requestType=" + requestType;
       
-      var secretkey = process.env.secretkey;
+      const secretkey = process.env.secretkey;
       const signature = crypto.createHmac('sha256', secretkey)
           .update(rawSignature)
           .digest('hex');
@@ -804,14 +805,14 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       });
 
       const options = {
-        hostname: 'test-payment.momo.vn',
-        port: 443,
-        path: '/v2/gateway/api/create',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(requestBody)
-        }
+          hostname: 'test-payment.momo.vn',
+          port: 443,
+          path: '/v2/gateway/api/create',
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(requestBody)
+          }
       }
 
       const paymentRequest = https.request(options, response => {
@@ -855,19 +856,6 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
           message: 'Error processing payment callback'
       });
   }
-});
-
-// Endpoint để xử lý IPN
-app.post("/ipn", (req, res) => {
-  // Xác nhận tính hợp lệ của yêu cầu IPN ở đây
-  // Nếu hợp lệ, xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu
-  // Gửi xác nhận hoặc thực hiện các tác vụ khác cần thiết
-  console.log('Received IPN callback from MoMo:');
-  console.log(req.body);
-
-  // Xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu ở đây
-
-  res.status(200).send('IPN processed successfully');
 });
 
 main();
