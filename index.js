@@ -370,23 +370,34 @@ app.post("/reset_password/:id/:token", async (req, res) => {
 
 });
 //postTicket
-app.post("/postTicket/:_id/:ticketId/:showtimeId/:seatId",async(req,res) => {
-  const {_id,ticketId, showtimeId, seatId} = req.params;
-  const idTicket = ticketId;
+app.post("/postTickets", async (req, res) => {
+  const ticketArray = req.query; // Lấy mảng ticketData từ query parameters
+  const parsedArray = JSON.parse(ticketArray.ticketArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
-    const userId = new ObjectId(_id);
-    const history = new historyModel({ ticketId: idTicket, userId: userId });
-    await history.save();
-    const ticket = new ticketModel({id: ticketId, showtimeId: showtimeId, seatId: seatId, userId: userId});
-    await ticket.save();
-    console.log("success add history");
-    res.send("success add ticketId");
+
+    for (const ticketDataKey in parsedArray) {
+      const ticketData = parsedArray[ticketDataKey];
+      const { _id, ticketId, showtimeId, seatId } = ticketData;
+      const userId = new ObjectId(_id);
+
+      const history = new historyModel({ ticketId, userId });
+      await history.save();
+
+      const ticket = new ticketModel({ id: ticketId, showtimeId, seatId, userId });
+      await ticket.save();
+    }
+
+    console.log("Success adding history and tickets");
+    res.send("Success adding tickets");
   } catch (error) {
     console.error(error);
     res.sendStatus(500);
   }
 });
+
+
+
 
 //onProcess
 app.delete("/deleteProcess",JWTauthenticationMiddleware,async (req,res)=>{
@@ -723,30 +734,21 @@ return res.status(404).json({message: 'User not found'});
 })
 
 //payment
-app.get("/payment/flag/:link", async (req, res) => {
-  const { link } = req.params;
-  try {
-    await ticketModel.updateOne({ id: ticketId }, { status: "paid" });
-    res.send("success update status");
-  } catch (error) {
-    console.error(error);
-    res.sendStatus(500);
-  }
-});
-app.post("/ipn", (req, res) => {
-  // Xác nhận tính hợp lệ của yêu cầu IPN ở đây
-  // Nếu hợp lệ, xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu
-  // Gửi xác nhận hoặc thực hiện các tác vụ khác cần thiết
-  console.log('Received IPN callback from MoMo:');
-  console.log(req.body);
-
-  // Xử lý thông tin thanh toán và cập nhật trạng thái trong cơ sở dữ liệu ở đây
-
-  res.status(200).send('IPN processed successfully');
-});
 app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   const { _id } = req.user;
-  const { ticketId,showtimeId,seatId,price } = req.body;
+  const {json} = req.body;
+  // Lặp qua mỗi đối tượng trong mảng
+  let total = 0;
+  let ticketArray = [];
+  for (const item of json) {
+    const { ticketId, showtimeId, seatId,price } = item;
+
+    // Xử lý mỗi đối tượng
+    console.log(`ticketId: ${ticketId}, showtimeId: ${showtimeId}, seatId: ${seatId}, price: ${price}`);
+    total = total + price;
+    ticketArray.push({ _id,ticketId, showtimeId, seatId });
+  }
+  
   try {
       // Handle the payment response from MoMo
       console.log('Received payment callback from MoMo:');
@@ -757,8 +759,8 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
       const orderId = requestId;
       const orderInfo = "pay with MoMo";
       const redirectUrl = "https://ui-theater.vercel.app/movies";
-      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket/${_id}/${ticketId}/${showtimeId}/${seatId}`;
-      const amount = price;
+      const ipnUrl = `https://uitlogachcu.onrender.com/postTicket?ticketArray=${JSON.stringify(ticketArray)}`;
+      const amount = total;
       const extraData = "";
       const requestType = "captureWallet";
       
