@@ -825,6 +825,40 @@ app.post("/payment",JWTauthenticationMiddleware, async (req, res) => {
   }
 });
 
+app.post("/postTickets",JWTauthenticationMiddleware, async (req, res) => {
+  const { ticketArray } = req.body;
+  console.log("ticketArray", ticketArray);
+  var ObjectId = require('mongodb').ObjectId;
+  const { _id } = req.user;
+  const userId = new ObjectId(_id);
+  try {
+    for (const ticketDataKey in ticketArray) {
+      const ticketData = ticketArray[ticketDataKey];
+      const {ticketId, showtimeId, seatId } = ticketData;
+      try {
+        await onProcessModel.deleteOne({ userId: userId, id: ticketId });
+      } catch (error) {
+        console.error(error);
+        return res.sendStatus(500); // Send an error response and exit the function
+      }
+
+      const history = new historyModel({ ticketId, userId });
+      await history.save();
+
+      const ticket = new ticketModel({ id: ticketId, showtimeId, seatId, userId });
+      await ticket.save();
+    }
+
+    console.log("Success adding history and tickets");
+    res.send("Success adding tickets");
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
+
+
+
 //postTicket
 app.post("/postTicketsIPN", async (req, res) => {
   console.log("aaaaaaaa");
@@ -834,7 +868,6 @@ app.post("/postTicketsIPN", async (req, res) => {
   const parsedArray = JSON.parse(ticketArray);
   try {
     var ObjectId = require('mongodb').ObjectId;
-
     for (const ticketDataKey in parsedArray) {
       const ticketData = parsedArray[ticketDataKey];
       const { _id, ticketId, showtimeId, seatId } = ticketData;
